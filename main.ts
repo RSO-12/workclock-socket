@@ -1,10 +1,19 @@
 import { Application, Router } from "https://deno.land/x/oak/mod.ts";
+import { connect } from "https://deno.land/x/redis/mod.ts";
 
 const connectedClients = new Map();
 
 const app = new Application();
 const port = 4000;
 const router = new Router();
+
+const redis = await connect({
+    hostname: "workclock-redis",
+    port: 6379,
+});
+
+const reply = await redis.sendCommand("SET", ["health", "ok"]);
+console.assert(reply === "OK");
 
 function broadcast(message) {
     for (const client of connectedClients.values()) {
@@ -52,6 +61,9 @@ router.get("/start_web_socket", async (ctx) => {
         const data = JSON.parse(m.data);
         switch (data.event) {
             case "send-message":
+                redis.set(socket.username, data.message);
+                redis.set('lts_msg', data.message);
+                
                 broadcast(
                     JSON.stringify({
                         event: "send-message",
