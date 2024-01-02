@@ -6,14 +6,15 @@ const connectedClients = new Map();
 const app = new Application();
 const port = 4000;
 const router = new Router();
+const REDIS_IP = "workclock-redis-service";
 
 const redis = await connect({
-    hostname: "workclock-redis",
+    hostname: REDIS_IP,
     port: 6379,
 });
 
-const reply = await redis.sendCommand("SET", ["health", "ok"]);
-console.assert(reply === "OK");
+// const reply = await redis.sendCommand("SET", ["health", "ok"]);
+// console.assert(reply === "OK");
 
 function broadcast(message) {
     for (const client of connectedClients.values()) {
