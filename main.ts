@@ -77,6 +77,10 @@ router.get("/start_web_socket", async (ctx) => {
     };
 });
 
+router.get("/heartbeat", (ctx) => {
+    ctx.response.body = "OK";
+});
+
 app.use(router.routes());
 app.use(router.allowedMethods());
 
