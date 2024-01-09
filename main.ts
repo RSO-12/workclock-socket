@@ -1,5 +1,6 @@
-import { Application, Router } from "https://deno.land/x/oak/mod.ts";
+import { Application, Router, Status } from "https://deno.land/x/oak/mod.ts";
 import { connect } from "https://deno.land/x/redis/mod.ts";
+import { getCurrentDateTimeFormatted, censorMessage } from "./util.ts";
 
 const connectedClients = new Map();
 
@@ -12,9 +13,6 @@ const redis = await connect({
     hostname: REDIS_IP,
     port: 6379,
 });
-
-// const reply = await redis.sendCommand("SET", ["health", "ok"]);
-// console.assert(reply === "OK");
 
 function broadcast(message) {
     for (const client of connectedClients.values()) {
@@ -58,18 +56,19 @@ router.get("/start_web_socket", async (ctx) => {
         broadcast_usernames();
     };
 
-    socket.onmessage = (m) => {
+    socket.onmessage = async (m) => {
         const data = JSON.parse(m.data);
         switch (data.event) {
             case "send-message":
+                const censoredMessage = await censorMessage(data.message);
                 redis.set(socket.username, data.message);
-                redis.set('lts_msg', data.message);
-                
+                redis.set('lts_msg', censoredMessage);
                 broadcast(
                     JSON.stringify({
                         event: "send-message",
                         username: socket.username,
-                        message: data.message,
+                        message: censoredMessage,
+                        timestamp: getCurrentDateTimeFormatted(),
                     }),
                 );
                 break;
@@ -79,6 +78,25 @@ router.get("/start_web_socket", async (ctx) => {
 
 router.get("/heartbeat", (ctx) => {
     ctx.response.body = "OK";
+});
+
+router.get("/heartbeat-redis", async (ctx) => {
+    let isOk = false;
+    try {
+        const reply = await redis.sendCommand("SET", ["health", "ok"]);
+        if (reply === "OK") {
+            ctx.response.status = Status.OK;
+            ctx.response.body = { message: "Service is accessible." };
+            isOk = true;
+        }
+    } catch (error) {
+        console.error("Redis error:", error);
+    }
+
+    if (!isOk) {
+        ctx.response.status = Status.ServiceUnavailable;
+        ctx.response.body = { message: "Service is not available." };      
+    }
 });
 
 app.use(router.routes());

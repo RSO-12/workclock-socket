@@ -1,6 +1,6 @@
 const myUsername = prompt("Please enter your name") ?? "Anonymous";
 const socket = new WebSocket(
-    `ws://35.238.216.237/socket/start_web_socket?username=${myUsername}`
+    `ws://127.0.0.1:8004/start_web_socket?username=${myUsername}`
 );
 
 socket.onmessage = (m) => {
@@ -16,7 +16,7 @@ socket.onmessage = (m) => {
 
         case "send-message":
             const conversationDiv = document.getElementById("conversation") 
-            conversationDiv.innerHTML += `<b>${data.username}</b>: ${data.message}<br/>`;
+            conversationDiv.innerHTML += `<b>${data.username}</b>: ${data.message}<br/>${data.timestamp}<br/>`;
             break;
     }
 };
