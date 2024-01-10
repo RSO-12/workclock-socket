@@ -1,10 +1,10 @@
 {
-    "name": "@janezs12/workclock-socket-v3",
+    "name": "@janezs12/workclock-socket-v4",
     "description": "Workclock socket service",
     "type": "module",
     "scripts": {
-        "build": "docker build -t janezs12/workclock-socket-v3 .",
-        "publish": "docker push janezs12/workclock-socket-v3",
-        "start": "docker run -it --init -p 4000:4000 janezs12/workclock-socket-v3"
+        "build": "docker build -t janezs12/workclock-socket-v4 .",
+        "publish": "docker push janezs12/workclock-socket-v4",
+        "start": "docker run -it --init -p 4000:4000 janezs12/workclock-socket-v4"
     }
 }
