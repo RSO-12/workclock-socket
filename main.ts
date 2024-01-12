@@ -1,6 +1,6 @@
 import { Application, Router, Status } from "https://deno.land/x/oak/mod.ts";
 import { connect } from "https://deno.land/x/redis/mod.ts";
-import { getCurrentDateTimeFormatted, censorMessage } from "./util.ts";
+import { getCurrentDateTimeFormatted, censorMessage, getLangCode, _t, getSupportedLanguages } from "./util.ts";
 
 const connectedClients = new Map();
 
@@ -35,7 +35,25 @@ const rateLimiter = async (ctx, next) => {
     await next();
 };
 
+const languageMiddleware = async (ctx, next) => {
+    const ip = ctx.request.ip;
+    const countryCode = ctx.request.headers.get("Accept-Language");
+    if (countryCode) {
+        ctx.state.language = countryCode;
+    } else {
+        const storedCountryCode = await redis.get(`langCode:${ip}`);
+        if (storedCountryCode) {
+            ctx.state.language = storedCountryCode;
+        } else {
+            const newCountryCode = await getLangCode(ip);
+            await redis.set(`langCode:${ip}`, newCountryCode);
+            ctx.state.language = newCountryCode;
+        }
+    }
+    await next();
+};
 app.use(rateLimiter);
+app.use(languageMiddleware);
 
 function broadcast(message) {
     for (const client of connectedClients.values()) {
@@ -96,6 +114,18 @@ router.get("/start_web_socket", async (ctx) => {
                 );
                 break;
         }
+    };
+});
+
+router.get("/joke-of-the-day", (ctx) => {
+    const lang = ctx?.state?.language ?? "en";
+    const jokeCount = 24;
+    const jokeIndex = Math.floor(Math.random() * jokeCount) + 1;
+    ctx.response.body = {
+        by: 'GitHub copilot',
+        joke_index: jokeIndex,
+        total_jokes: jokeCount,
+        joke: _t(lang, `joke${jokeIndex}`),
     };
 });
 

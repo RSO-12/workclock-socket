@@ -4,6 +4,7 @@ WORKDIR /app
 
 COPY main.ts .
 COPY util.ts .
+COPY translations.ts .
 
 EXPOSE 4000
 
