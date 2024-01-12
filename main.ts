@@ -14,6 +14,29 @@ const redis = await connect({
     port: 6379,
 });
 
+const LIMIT = 10, LIMIT_WINDOW_MS = 60000;
+const rateLimiter = async (ctx, next) => {
+    const ip = ctx.request.ip;
+    const key = `rateLimiter:${ip}`;
+
+    const currentTimestamp = Date.now();
+    let timestamps = await redis.get(key);
+    timestamps = timestamps ? JSON.parse(timestamps) : [];
+
+    timestamps = timestamps.filter((timestamp) => currentTimestamp - timestamp < LIMIT_WINDOW_MS);
+    if (timestamps.length >= LIMIT) {
+        ctx.response.status = Status.TooManyRequests;
+        ctx.response.body = { message: "Rate limit exceeded" };
+        return;
+    }
+
+    timestamps.push(currentTimestamp);
+    await redis.set(key, JSON.stringify(timestamps));
+    await next();
+};
+
+app.use(rateLimiter);
+
 function broadcast(message) {
     for (const client of connectedClients.values()) {
         client.send(message);
@@ -95,7 +118,7 @@ router.get("/heartbeat-redis", async (ctx) => {
 
     if (!isOk) {
         ctx.response.status = Status.ServiceUnavailable;
-        ctx.response.body = { message: "Service is not available." };      
+        ctx.response.body = { message: "Service is not available." };
     }
 });
 
